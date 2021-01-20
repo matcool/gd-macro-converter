@@ -91,6 +91,21 @@ function dumpzBot(replay) {
     return buffer;
 }
 
+function dumpyBot(replay) {
+    return JSON.stringify({
+        converted: {
+            delta_override: 1 / replay.fps,
+            instructions: replay.actions.map(action => {
+                return {
+                    x: action.x,
+                    press: action.hold,
+                    p2: action.player2
+                };
+            })
+        }
+    });
+}
+
 function selectVal(select) {
     return select.options[select.selectedIndex].value;
 }
@@ -144,9 +159,12 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 break;
             case 'txt':
                 return;
+            case 'ybot':
+                const text = dumpyBot(replay);
+                saveAs(new Blob([text], {type: 'application/json'}), 'converted.' + extensions[to]);
+                break;
         }
 
-        console.log(buffer);
         saveAs(new Blob([buffer], {type: 'application/octet-stream'}), 'converted.' + extensions[to]);
     }
 });
