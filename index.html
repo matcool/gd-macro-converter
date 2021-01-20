@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>converter</title>
+    </head>
+
+    <body>
+        <label>
+            From
+            <select id="select-from">
+                <option value="txt">Plain Text</option>
+                <option value="replaybot">ReplayBot</option>
+                <option selected="selected" value="zbot">zBot</option>
+                <option value="ybot">yBot</option>
+            </select>
+        </label>
+        <input type="file" id="ipt-file">
+        
+        <br>
+
+        <label>
+            To
+            <select id="select-to">
+                <option value="txt">Plain Text</option>
+                <option value="replaybot">ReplayBot</option>
+                <option value="zbot">zBot</option>
+                <option value="ybot">yBot</option>
+            </select>
+        </label>
+
+        <br>
+
+        <button id="btn-convert">Convert</button>
+        <br>
+        <textarea id="textarea" cols="40" rows="40"></textarea>
+
+        <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+        <script src="./main.js"></script>
+    </body>
+
+</html>
