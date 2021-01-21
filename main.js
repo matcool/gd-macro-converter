@@ -57,6 +57,32 @@ function parsezBot(view) {
     return {fps, actions};
 }
 
+/**
+ * i just want vscode completions
+ * @param {DataView} view 
+ */
+function parseDDHOR(view) {
+    let _tmp = new Uint8Array(view.buffer.slice(0, 4));
+    let magic = String.fromCharCode.apply(String, _tmp);
+    console.log(magic);
+    if (magic === 'DDHR') {
+        const fps = view.getInt16(4, true);
+        const player1ActionCount = view.getInt32(6, true);
+        const player2ActionCount = view.getInt32(10, true);
+        console.log(player1ActionCount, player2ActionCount);
+        const actions = [];
+        for (let i = 14; i < view.byteLength; i += 5) {
+            const x = view.getFloat32(i, true);
+            const action = view.getUint8(i + 4);
+            const player2 = i - 14 >= player1ActionCount * 5;
+            actions.push({x, hold: action == 0, player2});
+        }
+        actions.sort((a, b) => a.x - b.x);
+
+        return {fps, actions};
+    }
+}
+
 function dumpTxt(replay) {
     let final = '';
     final += `${replay.fps}\n`;
@@ -106,6 +132,29 @@ function dumpyBot(replay) {
     });
 }
 
+function strToBuf(str) {
+    return new Uint8Array(str.split('').map(i => i.charCodeAt()));
+}
+
+function dumpDDHOR(replay) {
+    const buffer = new ArrayBuffer(14 + replay.actions.length * 5);
+    const view = new DataView(buffer);
+    // amazing
+    strToBuf('DDHR').forEach((n, i) => view.setUint8(i, n));
+    view.setInt16(4, replay.fps, true);
+    // amazing
+    const player1Actions = replay.actions.filter(i => !i.player2);
+    const player2Actions = replay.actions.filter(i => i.player2);
+    view.setInt32(6, player1Actions.length, true);
+    view.setInt32(10, player2Actions.length, true);
+    // amazing
+    [...player1Actions, ...player2Actions].forEach((action, i) => {
+        view.setFloat32(14 + i * 5, action.x, true);
+        view.setUint8(18 + i * 5, +!action.hold);
+    });
+    return buffer;
+}
+
 function selectVal(select) {
     return select.options[select.selectedIndex].value;
 }
@@ -113,7 +162,8 @@ function selectVal(select) {
 const extensions = {
     replaybot: 'replay',
     zbot: 'zbot',
-    ybot: 'dat'
+    ybot: 'dat',
+    ddhor: 'ddhor'
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -143,6 +193,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'ybot':
                     replay = parseyBot(await files[0].text());
                     break;
+                case 'ddhor':
+                    replay = parseDDHOR(view);
+                    break;
             }
 
         }
@@ -162,6 +215,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             case 'ybot':
                 const text = dumpyBot(replay);
                 saveAs(new Blob([text], {type: 'application/json'}), 'converted.' + extensions[to]);
+                return;
+            case 'ddhor':
+                buffer = dumpDDHOR(replay);
                 break;
         }
 
