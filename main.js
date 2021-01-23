@@ -168,7 +168,9 @@ const extensions = {
 
 document.getElementById('select-from').addEventListener('change', e => {
     const input = document.getElementById('ipt-file');
-    input.style.display = selectVal(e.target) === 'txt' ? 'none' : '';
+    const val = selectVal(e.target);
+    input.style.display = val === 'txt' ? 'none' : '';
+    document.getElementById('textarea').disabled = val !== 'txt';
 });
 
 document.getElementById('btn-convert').addEventListener('click', async () => {
@@ -197,7 +199,15 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                     replay = parseDDHOR(view);
                     break;
             }
-
+            if (to === 'txt') {
+                // if converting to plain text then switch
+                const selectFrom = document.getElementById('select-from');
+                const selectTo = document.getElementById('select-to');
+                let tmp = selectTo.selectedIndex;
+                selectTo.selectedIndex = selectFrom.selectedIndex;
+                selectFrom.selectedIndex = tmp;
+                selectFrom.dispatchEvent(new Event('change'));
+            }
         }
         console.log(replay);
         document.getElementById('textarea').value = dumpTxt(replay);
