@@ -173,12 +173,17 @@ document.getElementById('select-from').addEventListener('change', e => {
     document.getElementById('textarea').disabled = val !== 'txt';
 });
 
+let replay;
+
+function updateTxt() {
+    document.getElementById('textarea').value = dumpTxt(replay);
+}
+
 document.getElementById('btn-convert').addEventListener('click', async () => {
     const from = selectVal(document.getElementById('select-from'));
     const to = selectVal(document.getElementById('select-to'));
     const files = document.getElementById('ipt-file').files;
     if (files.length || from === 'txt') {
-        let replay;
         if (from === 'txt') {
             replay = parseTxt(document.getElementById('textarea').value);
         } else {
@@ -210,7 +215,7 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             }
         }
         console.log(replay);
-        document.getElementById('textarea').value = dumpTxt(replay);
+        updateTxt();
 
         let buffer;
         switch (to) {
