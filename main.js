@@ -112,7 +112,7 @@ function dumpzBot(replay) {
     replay.actions.forEach((action, i) => {
         view.setFloat32(8 + i * 6, action.x, true);
         view.setUint8(12 + i * 6, action.hold ? 0x31 : 0x30);
-        view.setUint8(13 + i * 6, action.player2 ? 0x31 : 0x30);
+        view.setUint8(13 + i * 6, !action.player2 ? 0x31 : 0x30);
     });
     return buffer;
 }
