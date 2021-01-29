@@ -85,7 +85,7 @@ function parseDDHOR(view) {
 
 function parsexBot(text) {
     const lines = text.split('\n');
-    const fps = parseInt(lines.splice(0,1)[0].split(':')[1].trim());
+    const fps = parseInt(lines.splice(0,1)[0].split(' ')[1].trim());
     if (lines[0].trim() !== 'pro_plus') {
         alert('xbot only works with pro+');
         return;
