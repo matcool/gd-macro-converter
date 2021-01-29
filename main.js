@@ -186,7 +186,7 @@ function dumpDDHOR(replay) {
 }
 
 function dumpxBot(replay) {
-    let final = `fps: ${Math.round(replay.fps)}\npro_plus\n`;
+    let final = `fps: ${Math.round(replay.fps)}\r\npro_plus\r\n`;
     const buffer = new ArrayBuffer(4);
     const view = new DataView(buffer);
     replay.actions.forEach(action => {
@@ -194,7 +194,7 @@ function dumpxBot(replay) {
         const state = action.hold + 2 * action.player2;
         view.setFloat32(0, action.x);
         const pos = view.getUint32(0);
-        final += `${state} ${pos}\n`;
+        final += `${state} ${pos}\r\n`;
     });
     return final.slice(0, final.length - 1);
 }
