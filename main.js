@@ -159,7 +159,7 @@ function dumpyBot(replay) {
                 };
             })
         }
-    });
+    }, null, 2);
 }
 
 function strToBuf(str) {
