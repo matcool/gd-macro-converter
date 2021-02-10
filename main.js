@@ -199,6 +199,25 @@ function dumpxBot(replay) {
     return final.slice(0, final.length - 1);
 }
 
+function cleanReplay(replay) {
+    let last1 = false;
+    let last2 = false;
+    let n = 0;
+    let final = [];
+    replay.actions.forEach(action => {
+        if (action.hold == (action.player2 ? last2 : last1)) {
+            ++n;
+            return;
+        }
+        if (action.player2) last2 = action.hold;
+        else last1 = action.hold;
+        final.push(action);
+    });
+    if (n) console.log(`Removed ${n} reduntant actions`);
+    replay.actions = final;
+    updateTxt();
+}
+
 function selectVal(select) {
     return select.options[select.selectedIndex].value;
 }
@@ -263,6 +282,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             }
         }
         console.log(replay);
+        if (document.getElementById('chk-clean').checked) {
+            cleanReplay(replay);
+        }
         updateTxt();
 
         let buffer;
