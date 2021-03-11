@@ -112,6 +112,18 @@ function parsexBot(text) {
     return {fps, actions};
 }
 
+function parseKDBot(text) {
+    const lines = text.split('\n');
+    const fps = parseInt(prompt('Whats the fps'));
+    const actions = [];
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const [hold, x] = line.split(':');
+        actions.push({ x: parseFloat(x), hold: hold === 'push', player2: false });
+    }
+    return {fps, actions};
+}
+
 function dumpTxt(replay) {
     let final = '';
     final += `${replay.fps}\n`;
@@ -199,6 +211,15 @@ function dumpxBot(replay) {
     return final.slice(0, final.length - 1);
 }
 
+function dumpKDBot(replay) {
+    let final = '';
+    replay.actions.forEach(action => {
+        // no player 2 trololo
+        final += `${action.hold ? 'push' : 'release'}: ${action.x}\r\n`;
+    });
+    return final.slice(0, final.length - 2);
+}
+
 function cleanReplay(replay) {
     let last1 = false;
     let last2 = false;
@@ -227,7 +248,8 @@ const extensions = {
     zbot: 'zbot',
     ybot: 'dat',
     ddhor: 'ddhor',
-    xbot: 'xbot'
+    xbot: 'xbot',
+    kdbot: 'kdbot'
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -270,6 +292,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'xbot':
                     replay = parsexBot(await files[0].text());
                     break;
+                case 'kdbot':
+                    replay = parseKDBot(await files[0].text());
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -306,6 +331,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 break;
             case 'xbot':
                 saveAs(new Blob([dumpxBot(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
+                return;
+            case 'kdbot':
+                saveAs(new Blob([dumpKDBot(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
                 return;
         }
 
