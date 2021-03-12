@@ -249,7 +249,7 @@ const extensions = {
     ybot: 'dat',
     ddhor: 'ddhor',
     xbot: 'xbot',
-    kdbot: 'kdbot'
+    kdbot: 'kdb'
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
