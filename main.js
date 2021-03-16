@@ -119,7 +119,7 @@ function parseKDBot(text) {
     for (const line of lines) {
         if (!line.trim()) continue;
         const [hold, x] = line.split(':');
-        actions.push({ x: parseFloat(x), hold: hold === 'push', player2: false });
+        actions.push({ x: parseFloat(x), hold: hold.startsWith('push'), player2: hold.endsWith('2p') });
     }
     return {fps, actions};
 }
@@ -214,8 +214,7 @@ function dumpxBot(replay) {
 function dumpKDBot(replay) {
     let final = '';
     replay.actions.forEach(action => {
-        // no player 2 trololo
-        final += `${action.hold ? 'push' : 'release'}: ${action.x}\r\n`;
+        final += `${action.hold ? 'push' : 'release'}${action.player2 ? '2p' : ''}: ${action.x}\r\n`;
     });
     return final.slice(0, final.length - 2);
 }
