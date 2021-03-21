@@ -57,6 +57,20 @@ function parsezBot(view) {
     return {fps, actions};
 }
 
+function parseZBF(view) {
+    const delta = view.getFloat32(0, true);
+    const speedhack = view.getFloat32(4, true);
+    const fps = 1 / delta / speedhack
+    const actions = [];
+    for (let i = 8; i < view.byteLength; i += 6) {
+        const x = view.getInt32(i, true);
+        const hold = view.getUint8(i + 4) === 0x31;
+        const player1 = view.getUint8(i + 5) === 0x31;
+        actions.push({x, hold, player2: !player1});
+    }
+    return {fps, actions};
+}
+
 /**
  * i just want vscode completions
  * @param {DataView} view 
@@ -112,6 +126,25 @@ function parsexBot(text) {
     return {fps, actions};
 }
 
+function parsexBotFrame(text) {
+    const lines = text.split('\n');
+    const fps = parseInt(lines.splice(0,1)[0].split(' ')[1].trim());
+    if (lines[0].trim() !== 'frames') {
+        alert('not a frame');
+        return;
+    }
+    lines.splice(0,1);
+    const actions = [];
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const [state, rawPos] = line.trim().split(' ').map(i => parseInt(i));
+        const player2 = state > 1;
+        const hold = state % 2 == 1;
+        actions.push({ x: parseInt(rawPos), hold, player2 });
+    }
+    return {fps, actions};
+}
+
 function parseKDBot(text) {
     const lines = text.split('\n');
     const fps = parseInt(prompt('Whats the fps'));
@@ -152,6 +185,19 @@ function dumpzBot(replay) {
     view.setFloat32(4, 1, true);
     replay.actions.forEach((action, i) => {
         view.setFloat32(8 + i * 6, action.x, true);
+        view.setUint8(12 + i * 6, action.hold ? 0x31 : 0x30);
+        view.setUint8(13 + i * 6, !action.player2 ? 0x31 : 0x30);
+    });
+    return buffer;
+}
+
+function dumpZBF(replay) {
+    const buffer = new ArrayBuffer(8 + replay.actions.length * 6);
+    const view = new DataView(buffer);
+    view.setFloat32(0, 1 / replay.fps, true);
+    view.setFloat32(4, 1, true);
+    replay.actions.forEach((action, i) => {
+        view.setInt32(8 + i * 6, action.x, true);
         view.setUint8(12 + i * 6, action.hold ? 0x31 : 0x30);
         view.setUint8(13 + i * 6, !action.player2 ? 0x31 : 0x30);
     });
@@ -211,6 +257,15 @@ function dumpxBot(replay) {
     return final.slice(0, final.length - 1);
 }
 
+function dumpxBotFrame(replay) {
+    let final = `fps: ${Math.round(replay.fps)}\r\nframes\r\n`;
+    replay.actions.forEach(action => {
+        const state = action.hold + 2 * action.player2;
+        final += `${state} ${Math.floor(action.x)}\r\n`;
+    });
+    return final.slice(0, final.length - 1);
+}
+
 function dumpKDBot(replay) {
     let final = '';
     replay.actions.forEach(action => {
@@ -248,7 +303,9 @@ const extensions = {
     ybot: 'dat',
     ddhor: 'ddhor',
     xbot: 'xbot',
-    kdbot: 'kdb'
+    kdbot: 'kdb',
+    zbf: 'zbf',
+    'xbot-frame': 'xbot'
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -294,6 +351,12 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'kdbot':
                     replay = parseKDBot(await files[0].text());
                     break;
+                case 'zbf':
+                    replay = parseZBF(view);
+                    break;
+                case 'xbot-frame':
+                    replay = parsexBotFrame(await files[0].text());
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -333,6 +396,12 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 return;
             case 'kdbot':
                 saveAs(new Blob([dumpKDBot(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
+                return;
+            case 'zbf':
+                buffer = dumpZBF(replay);
+                break;
+            case 'xbot-frame':
+                saveAs(new Blob([dumpxBotFrame(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
                 return;
         }
 
