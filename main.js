@@ -147,7 +147,7 @@ function parsexBotFrame(text) {
 
 function parseKDBot(text) {
     const lines = text.split('\n');
-    const fps = parseInt(prompt('Whats the fps'));
+    const fps = parseFloat(lines.splice(0,1)[0]);
     const actions = [];
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -267,7 +267,7 @@ function dumpxBotFrame(replay) {
 }
 
 function dumpKDBot(replay) {
-    let final = '';
+    let final = `${Math.round(replay.fps)}\r\n`;
     replay.actions.forEach(action => {
         final += `${action.hold ? 'push' : 'release'}${action.player2 ? '2p' : ''}: ${action.x}\r\n`;
     });
