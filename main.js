@@ -163,10 +163,10 @@ function parseTASBOT(text, frame=false) {
     const actions = [];
     for (const action of data.macro) {
         const x = frame ? action.frame : action.player_1.x_position;
-        if (action.player_1_click)
-            actions.push({x, hold: action.player_1_click === 1, player2: false});
-        if (action.palyer_2_click)
-            actions.push({x, hold: action.player_2_click === 1, player2: true});
+        if (action.player_1.click)
+            actions.push({x, hold: action.player_1.click === 1, player2: false});
+        if (action.player_2.click)
+            actions.push({x, hold: action.player_2.click === 1, player2: true});
     }
     return {fps, actions};
 }
@@ -294,12 +294,12 @@ function dumpTASBOT(replay, frame=false) {
         macro: replay.actions.map(action => {
             return {
                 frame: frame ? action.x : 0,
-                player_1_click: !action.player2 && (!action.hold + 1),
-                player_2_click: +action.player2 && (!action.hold + 1),
                 player_1: {
+                    click: !action.player2 && (!action.hold + 1),
                     x_position: frame ? 0 : action.x
                 },
                 player_2: {
+                    click: +action.player2 && (!action.hold + 1),
                     x_position: frame ? 0 : action.x
                 }
             };
