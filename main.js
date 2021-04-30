@@ -157,6 +157,20 @@ function parseKDBot(text) {
     return {fps, actions};
 }
 
+function parseTASBOT(text, frame=false) {
+    const data = JSON.parse(text);
+    const fps = data.fps;
+    const actions = [];
+    for (const action of data.macro) {
+        const x = frame ? action.frame : action.player_1.x_position;
+        if (action.player_1_click)
+            actions.push({x, hold: action.player_1_click === 1, player2: false});
+        if (action.palyer_2_click)
+            actions.push({x, hold: action.player_2_click === 1, player2: true});
+    }
+    return {fps, actions};
+}
+
 function dumpTxt(replay) {
     let final = '';
     final += `${replay.fps}\n`;
@@ -274,6 +288,26 @@ function dumpKDBot(replay) {
     return final.slice(0, final.length - 2);
 }
 
+function dumpTASBOT(replay, frame=false) {
+    const data = {
+        fps: replay.fps,
+        macro: replay.actions.map(action => {
+            return {
+                frame: frame ? action.x : 0,
+                player_1_click: !action.player2 && (!action.hold + 1),
+                player_2_click: +action.player2 && (!action.hold + 1),
+                player_1: {
+                    x_position: frame ? 0 : action.x
+                },
+                player_2: {
+                    x_position: frame ? 0 : action.x
+                }
+            };
+        })
+    };
+    return JSON.stringify(data);
+}
+
 function cleanReplay(replay) {
     let last1 = false;
     let last2 = false;
@@ -357,6 +391,10 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'xbot-frame':
                     replay = parsexBotFrame(await files[0].text());
                     break;
+                case 'tasbot':
+                case 'tasbot-f':
+                    replay = parseTASBOT(await files[0].text(), from === 'tasbot-f');
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -402,6 +440,10 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 break;
             case 'xbot-frame':
                 saveAs(new Blob([dumpxBotFrame(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
+                return;
+            case 'tasbot':
+            case 'tasbot-f':
+                saveAs(new Blob([dumpTASBOT(replay, to === 'tasbot-f')], {type: 'application/json'}), 'converted.json');
                 return;
         }
 
