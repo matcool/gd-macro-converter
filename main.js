@@ -295,7 +295,7 @@ function dumpTASBOT(replay, frame=false) {
             return {
                 frame: frame ? action.x : 0,
                 player_1: {
-                    click: !action.player2 && (!action.hold + 1),
+                    click: +!action.player2 && (!action.hold + 1),
                     x_position: frame ? 0 : action.x
                 },
                 player_2: {
@@ -305,7 +305,7 @@ function dumpTASBOT(replay, frame=false) {
             };
         })
     };
-    return JSON.stringify(data);
+    return JSON.stringify(data, null, 1);
 }
 
 function cleanReplay(replay) {
