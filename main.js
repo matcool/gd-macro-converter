@@ -42,6 +42,20 @@ function parseyBot(text) {
     }
 }
 
+function parseYbotF(view) {
+    const fps = view.getFloat32(4, true);
+    const nActions = view.getInt32(8, true);
+    const actions = [];
+    for (let i = 12; i < 12 + nActions * 8; i += 8) {
+        const frame = view.getUint32(i, true);
+        const idk = view.getUint32(i + 4, true);
+        const hold = (idk & 0b10) === 2;
+        const player2 = (idk & 0b01) === 1;
+        actions.push({x: frame, hold, player2});
+    }
+    return {fps, actions};
+}
+
 function parsezBot(view) {
     const delta = view.getFloat32(0, true);
     const speedhack = view.getFloat32(4, true);
@@ -234,6 +248,20 @@ function dumpyBot(replay) {
     }, null, 2);
 }
 
+function dumpYbotF(replay) {
+    const buffer = new ArrayBuffer(12 + replay.actions.length * 8);
+    const view = new DataView(buffer);
+    strToBuf('ybot').forEach((n, i) => view.setUint8(i, n));
+    view.setFloat32(4, replay.fps, true);
+    view.setUint32(8, replay.actions.length, true);
+    replay.actions.forEach((action, i) => {
+        view.setInt32(12 + i * 8, action.x, true);
+        let idk = action.player2 + action.hold * 2;
+        view.setUint32(16 + i * 8, idk);
+    });
+    return buffer;
+}
+
 function strToBuf(str) {
     return new Uint8Array(str.split('').map(i => i.charCodeAt()));
 }
@@ -339,7 +367,8 @@ const extensions = {
     xbot: 'xbot',
     kdbot: 'kdb',
     zbf: 'zbf',
-    'xbot-frame': 'xbot'
+    'xbot-frame': 'xbot',
+    'ybot-frame': null // why
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -395,6 +424,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'tasbot-f':
                     replay = parseTASBOT(await files[0].text(), from === 'tasbot-f');
                     break;
+                case 'ybot-frame':
+                    replay = parseYbotF(view);
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -445,8 +477,11 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             case 'tasbot-f':
                 saveAs(new Blob([dumpTASBOT(replay, to === 'tasbot-f')], {type: 'application/json'}), 'converted.json');
                 return;
+            case 'ybot-frame':
+                buffer = dumpYbotF(replay);
+                break;
         }
 
-        saveAs(new Blob([buffer], {type: 'application/octet-stream'}), 'converted.' + extensions[to]);
+        saveAs(new Blob([buffer], {type: 'application/octet-stream'}), extensions[to] ? 'converted.' + extensions[to] : 'converted');
     }
 });
