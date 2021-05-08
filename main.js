@@ -177,10 +177,11 @@ function parseTASBOT(text, frame=false) {
     const actions = [];
     for (const action of data.macro) {
         const x = frame ? action.frame : action.player_1.x_position;
-        if (action.player_1.click)
-            actions.push({x, hold: action.player_1.click === 1, player2: false});
-        if (action.player_2.click)
-            actions.push({x, hold: action.player_2.click === 1, player2: true});
+        let h;
+        if (h = action.player_1.click ?? action.player_1_click)
+            actions.push({x, hold: h === 1, player2: false});
+        if (h = action.player_2.click ?? action.player_2_click)
+            actions.push({x, hold: h === 1, player2: true});
     }
     return {fps, actions};
 }
