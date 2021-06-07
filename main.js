@@ -3,7 +3,7 @@ function parseTxt(text) {
     const fps = parseFloat(lines.splice(0, 1));
     const actions = [];
     for (const line of lines) {
-        const split = line.split(' ');
+        const split = line.trim().split(' ');
         if (split.length !== 3) continue;
         actions.push({
             x: parseFloat(split[0]),
@@ -192,7 +192,7 @@ function parseEcho(text, frame) {
     const startingFrame = frame ? parseFloat(lines.splice(0, 1)) : 0;
     const actions = [];
     for (const line of lines) {
-        const split = line.split(' ');
+        const split = line.trim().split(' ');
         if (split.length !== 3) continue;
         actions.push({
             x: parseFloat(split[0]) + startingFrame,
