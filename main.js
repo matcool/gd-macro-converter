@@ -3,7 +3,7 @@ function parseTxt(text) {
     const fps = parseFloat(lines.splice(0, 1));
     const actions = [];
     for (const line of lines) {
-        const split = line.split(' ');
+        const split = line.trim().split(' ');
         if (split.length !== 3) continue;
         actions.push({
             x: parseFloat(split[0]),
@@ -194,6 +194,25 @@ function parseTASBOT(text, frame=false) {
     return {fps, actions};
 }
 
+function parseEcho(text, frame) {
+    const lines = text.split('\n');
+    const fps = parseFloat(lines.splice(0, 1));
+    const startingFrame = parseFloat(lines.splice(0, 1));
+    const actions = [];
+    for (const line of lines) {
+        const split = line.trim().split(' ');
+        if (split.length !== 3) continue;
+        const [f, x] = split[0].split(':');
+        actions.push({
+            x: frame ? parseInt(f) + startingFrame : parseFloat(x),
+            hold: split[1] === '1',
+            player2: split[2] === '1'
+        });
+    }
+    return {fps, actions};
+}
+
+
 function dumpTxt(replay) {
     let final = '';
     final += `${replay.fps}\n`;
@@ -347,6 +366,13 @@ function dumpTASBOT(replay, frame=false) {
     return JSON.stringify(data, null, 1);
 }
 
+function dumpEcho(replay, frame) {
+    // i could probably just do action.x for both but eh
+    return `${replay.fps}\n0\n` + replay.actions.map(
+        action => `${frame ? action.x : 0}:${frame ? 0 : action.x} ${+action.hold} ${+action.player2}`
+    ).join('\n');
+}
+
 function cleanReplay(replay) {
     let last1 = false;
     let last2 = false;
@@ -379,7 +405,7 @@ const extensions = {
     kdbot: 'kdb',
     zbf: 'zbf',
     'xbot-frame': 'xbot',
-    'ybot-frame': null // why
+    'ybot-frame': null, // why
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -438,6 +464,10 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'ybot-frame':
                     replay = parseYbotF(view);
                     break;
+                case 'echo':
+                case 'echof':
+                    replay = parseEcho(await files[0].text(), from === 'echof');
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -491,6 +521,10 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             case 'ybot-frame':
                 buffer = dumpYbotF(replay);
                 break;
+            case 'echo':
+            case 'echof':
+                saveAs(new Blob([dumpEcho(replay, to === 'echof')], {type: 'application/json'}), 'converted.echo');
+                return;
         }
 
         saveAs(new Blob([buffer], {type: 'application/octet-stream'}), extensions[to] ? 'converted.' + extensions[to] : 'converted');
