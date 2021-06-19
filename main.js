@@ -240,7 +240,10 @@ function dumpReplayBot(replay, frame=false) {
     view.setUint8(5, +frame); // type
     view.setFloat32(6, replay.fps, true);
     replay.actions.forEach((action, i) => {
-        view.setFloat32(10 + i * 5, action.x, true);
+        if (frame)
+            view.setUint32(10 + i * 5, action.x, true);
+        else
+            view.setFloat32(10 + i * 5, action.x, true);
         const state = action.hold | (action.player2 << 1);
         view.setUint8(14 + i * 5, state);
     });
