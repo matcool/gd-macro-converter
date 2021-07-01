@@ -104,9 +104,7 @@ function parseZBF(view) {
  * @param {DataView} view 
  */
 function parseDDHOR(view) {
-    let _tmp = new Uint8Array(view.buffer.slice(0, 4));
-    let magic = String.fromCharCode.apply(String, _tmp);
-    console.log(magic);
+    let magic = String.fromCharCode(...new Uint8Array(view.buffer.slice(0, 4)));
     if (magic === 'DDHR') {
         const fps = view.getInt16(4, true);
         const player1ActionCount = view.getInt32(6, true);
@@ -122,6 +120,30 @@ function parseDDHOR(view) {
         actions.sort((a, b) => a.x - b.x);
 
         return {fps, actions};
+    } else {
+        const data = JSON.parse(String.fromCharCode(...(new Uint8Array(view.buffer))));
+        let type = data.macro;
+        const fps = data.fps;
+        if (type === 'x-position') {
+            const actions = [
+                ...data.inputsP1.map(ipt => {
+                    return {
+                        x: ipt.position,
+                        hold: ipt.action === 'PUSH',
+                        player2: false
+                    };
+                }),
+                ...data.inputsP2.map(ipt => {
+                    return {
+                        x: ipt.position,
+                        hold: ipt.action === 'PUSH',
+                        player2: true
+                    };
+                }),
+            ];
+            actions.sort((a, b) => a.x - b.x);
+            return {fps, actions};
+        }
     }
 }
 
@@ -307,22 +329,25 @@ function dumpYbotF(replay) {
 }
 
 function dumpDDHOR(replay) {
-    const buffer = new ArrayBuffer(14 + replay.actions.length * 5);
-    const view = new DataView(buffer);
-    // amazing
-    strToBuf('DDHR').forEach((n, i) => view.setUint8(i, n));
-    view.setInt16(4, replay.fps, true);
-    // amazing
     const player1Actions = replay.actions.filter(i => !i.player2);
     const player2Actions = replay.actions.filter(i => i.player2);
-    view.setInt32(6, player1Actions.length, true);
-    view.setInt32(10, player2Actions.length, true);
-    // amazing
-    [...player1Actions, ...player2Actions].forEach((action, i) => {
-        view.setFloat32(14 + i * 5, action.x, true);
-        view.setUint8(18 + i * 5, +!action.hold);
+    return JSON.stringify({
+        fps: Math.round(replay.fps),
+        levelID: null,
+        macro: 'x-position',
+        inputsP1: player1Actions.map(action => {
+            return {
+                action: action.hold ? 'PUSH' : 'RELEASE',
+                position: action.x
+            };
+        }),
+        inputsP2: player2Actions.map(action => {
+            return {
+                action: action.hold ? 'PUSH' : 'RELEASE',
+                position: action.x
+            };
+        })
     });
-    return buffer;
 }
 
 function dumpxBot(replay) {
@@ -412,6 +437,7 @@ const extensions = {
     zbot: 'zbot',
     ybot: 'dat',
     ddhor: 'ddhor',
+    'ddhor-new': 'ddhor',
     xbot: 'xbot',
     kdbot: 'kdb',
     zbf: 'zbf',
@@ -512,8 +538,8 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 saveAs(new Blob([text], {type: 'application/json'}), 'converted.' + extensions[to]);
                 return;
             case 'ddhor':
-                buffer = dumpDDHOR(replay);
-                break;
+                saveAs(new Blob([dumpDDHOR(replay)], {type: 'application/json'}), 'converted.ddhor');
+                return;
             case 'xbot':
                 saveAs(new Blob([dumpxBot(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
                 return;
