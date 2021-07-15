@@ -253,6 +253,20 @@ function parseEcho(text, frame) {
     return {fps, actions};
 }
 
+function parseUniversalReplayFormat(view) {
+    const fps = view.getFloat32(0, true);
+    const type = view.getUint8(4);
+    const actions = [];
+    for (let i = 5; i < view.byteLength; i += 5) {
+        const state = view.getUint8(i);
+        const hold = state & 1 === 1;
+        const player2 = state >> 1 === 1;
+        const x = type == 0 ? view.getFloat32(i + 1, true) : view.getUint32(i + 1, true);
+        actions.push({x, hold, player2});
+    }
+    return {fps, actions};
+}
+
 
 function dumpTxt(replay) {
     let final = '';
@@ -421,6 +435,23 @@ function dumpEcho(replay, frame) {
     ).join('\n');
 }
 
+function dumpUniversalReplayFormat(replay, frame) {
+    const buffer = new ArrayBuffer(5 + replay.actions.length * 5);
+    const view = new DataView(buffer);
+    view.setFloat32(0, replay.fps, true);
+    view.setUint8(4, frame, true);
+    replay.actions.forEach((action, i) => {
+        const state = action.hold + action.player2 * 2;
+        view.setUint8(5 + i * 5, state);
+        if (frame)
+            view.setUint32(6 + i * 5, action.x, true);
+        else
+            view.setFloat32(6 + i * 5, action.x, true);
+    });
+    return buffer;
+}
+
+
 function cleanReplay(replay) {
     let last1 = false;
     let last2 = false;
@@ -456,6 +487,8 @@ const extensions = {
     zbf: 'zbf',
     'xbot-frame': 'xbot',
     'ybot-frame': null, // why
+    'url': 'replay',
+    'url-f': 'replay',
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -518,6 +551,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'echof':
                     replay = parseEcho(await files[0].text(), from === 'echof');
                     break;
+                case 'url':
+                    replay = parseUniversalReplayFormat(view);
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -576,6 +612,10 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             case 'echof':
                 saveAs(new Blob([dumpEcho(replay, to === 'echof')], {type: 'application/json'}), 'converted.echo');
                 return;
+            case 'url':
+            case 'url-f':
+                buffer = dumpUniversalReplayFormat(replay, to === 'url-f');
+                break;
         }
 
         saveAs(new Blob([buffer], {type: 'application/octet-stream'}), extensions[to] ? 'converted.' + extensions[to] : 'converted');
