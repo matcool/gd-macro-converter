@@ -236,20 +236,15 @@ function parseTASBOT(text, frame=false) {
 }
 
 function parseEcho(text, frame) {
-    const lines = text.split('\n');
-    const fps = parseFloat(lines.splice(0, 1));
-    const startingFrame = parseFloat(lines.splice(0, 1));
-    const actions = [];
-    for (const line of lines) {
-        const split = line.trim().split(' ');
-        if (split.length !== 3) continue;
-        const [f, x] = split[0].split(':');
-        actions.push({
-            x: frame ? parseInt(f) + startingFrame : parseFloat(x),
-            hold: split[1] === '1',
-            player2: split[2] === '1'
-        });
-    }
+    const data = JSON.parse(text);
+    const fps = data.FPS;
+    // thanks krx
+    const startingFrame = data['Starting Frame']; 
+    const actions = data['Echo Replay'].map(action => ({
+        x: frame ? action.Frame + startingFrame : action['X Position'],
+        hold: action.Hold,
+        player2: action['Player 2']
+    }));
     return {fps, actions};
 }
 
@@ -429,10 +424,16 @@ function dumpTASBOT(replay, frame=false) {
 }
 
 function dumpEcho(replay, frame) {
-    // i could probably just do action.x for both but eh
-    return `${replay.fps}\n0\n` + replay.actions.map(
-        action => `${frame ? action.x : 0}:${frame ? 0 : action.x} ${+action.hold} ${+action.player2}`
-    ).join('\n');
+    return JSON.stringify({
+        FPS: replay.fps,
+        'Starting Frame': 0,
+        'Echo Replay': replay.actions.map(action => ({
+            Hold: action.hold,
+            'Player 2': action.player2,
+            Frame: frame ? action.x : 0,
+            'X Position': frame ? 0 : action.x
+        }))
+    }, null, 4);
 }
 
 function dumpUniversalReplayFormat(replay, frame) {
