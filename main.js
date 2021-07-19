@@ -622,3 +622,31 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
         saveAs(new Blob([buffer], {type: 'application/octet-stream'}), extensions[to] ? 'converted.' + extensions[to] : 'converted');
     }
 });
+
+document.getElementById('btn-offset-frames').addEventListener('click', () => {
+    const ipt = document.getElementById('ipt-offset-frames');
+    let offset = parseInt(ipt.value);
+    replay.actions.forEach(action => action.x += offset);
+    updateTxt();
+    ipt.value = 0;
+});
+
+document.getElementById('btn-remove-p1').addEventListener('click', () => {
+    replay.actions = replay.actions.filter(action => action.player2);
+    updateTxt();
+});
+
+document.getElementById('btn-remove-p2').addEventListener('click', () => {
+    replay.actions = replay.actions.filter(action => !action.player2);
+    updateTxt();
+});
+
+document.getElementById('btn-flip-hold').addEventListener('click', () => {
+    replay.actions.forEach(action => action.hold = !action.hold);
+    updateTxt();
+});
+
+document.getElementById('btn-flip-player').addEventListener('click', () => {
+    replay.actions.forEach(action => action.player2 = !action.player2);
+    updateTxt();
+});
