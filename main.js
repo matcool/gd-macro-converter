@@ -248,7 +248,7 @@ function parseEcho(text, frame) {
     return {fps, actions};
 }
 
-function parseUniversalReplayFormat(view) {
+function parseUniversalReplayFormat(view, frame) {
     const fps = view.getFloat32(0, true);
     const type = view.getUint8(4);
     const actions = [];
@@ -256,7 +256,13 @@ function parseUniversalReplayFormat(view) {
         const state = view.getUint8(i);
         const hold = state & 1 === 1;
         const player2 = state >> 1 === 1;
-        const x = type == 0 ? view.getFloat32(i + 1, true) : view.getUint32(i + 1, true);
+        let x;
+        if (type === 2) {
+            x = frame ? view.getUint32(i + 5, true) : view.getFloat32(i + 1, true);
+            i += 4;
+        }
+        else
+            x = type == 0 ? view.getFloat32(i + 1, true) : view.getUint32(i + 1, true);
         actions.push({x, hold, player2});
     }
     return {fps, actions};
@@ -553,7 +559,8 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                     replay = parseEcho(await files[0].text(), from === 'echof');
                     break;
                 case 'url':
-                    replay = parseUniversalReplayFormat(view);
+                case 'url-f':
+                    replay = parseUniversalReplayFormat(view, from === 'url-f');
                     break;
             }
             if (to === 'txt') {
