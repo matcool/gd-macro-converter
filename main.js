@@ -134,7 +134,7 @@ function parseDDHOR(view) {
 
         return {fps, actions};
     } else {
-        const data = JSON.parse(String.fromCharCode(...(new Uint8Array(view.buffer))));
+        const data = JSON.parse(new TextDecoder().decode(new Uint8Array(view.buffer)));
         let type = data.macro;
         const fps = data.fps;
         if (type === 'x-position') {
