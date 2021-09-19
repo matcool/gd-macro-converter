@@ -268,6 +268,22 @@ function parseUniversalReplayFormat(view, frame) {
     return {fps, actions};
 }
 
+function parseRush(view) {
+    const fps = view.getInt16(0, true);
+    const actions = [];
+    for (let i = 2; i < view.byteLength; i += 5) {
+        const x = view.getInt32(i, true);
+        let state = view.getUint8(i + 4);
+
+        const hold = !!(state & 1);
+        const player2 = !!(state >> 1);
+
+        actions.push({x, hold: !!hold, player2: !!player2});
+    }
+    return {fps, actions};
+}
+
+
 
 function dumpTxt(replay) {
     let final = '';
@@ -458,6 +474,18 @@ function dumpUniversalReplayFormat(replay, frame) {
     return buffer;
 }
 
+function dumpRush(replay) {
+    const buffer = new ArrayBuffer(2 + replay.actions.length * 5);
+    const view = new DataView(buffer);
+    view.setInt16(0, replay.fps, true);
+    replay.actions.forEach((action, i) => {
+        const state = action.hold + action.player2 * 2;
+        view.setInt32(2 + i * 5, action.x, true);
+        view.setUint8(6 + i * 5, state);
+    });
+    return buffer;
+}
+
 
 function cleanReplay(replay) {
     let last1 = false;
@@ -496,6 +524,7 @@ const extensions = {
     'ybot-frame': null, // why
     'url': 'replay',
     'url-f': 'replay',
+    'rush': 'rsh',
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -562,6 +591,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'url-f':
                     replay = parseUniversalReplayFormat(view, from === 'url-f');
                     break;
+                case 'rush':
+                    replay = parseRush(view);
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -623,6 +655,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             case 'url':
             case 'url-f':
                 buffer = dumpUniversalReplayFormat(replay, to === 'url-f');
+                break;
+            case 'rush':
+                buffer = dumpRush(replay);
                 break;
         }
 
