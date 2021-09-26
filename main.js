@@ -208,14 +208,14 @@ function parsexBotFrame(text) {
     return {fps, actions};
 }
 
-function parseKDBot(text) {
-    const lines = text.split('\n');
-    const fps = parseFloat(lines.splice(0,1)[0]);
+function parseKDBot(view) {
+    const fps = view.getFloat32(0, true);
     const actions = [];
-    for (const line of lines) {
-        if (!line.trim()) continue;
-        const [hold, x] = line.split(':');
-        actions.push({ x: parseFloat(x), hold: hold.startsWith('push'), player2: hold.endsWith('2p') });
+    for (let i = 4; i < view.byteLength; i += 6) {
+        const frame = view.getInt32(i, true);
+        const hold = view.getUint8(i + 4) === 1;
+        const player2 = view.getUint8(i + 5) === 1;
+        actions.push({x: frame, hold, player2});
     }
     return {fps, actions};
 }
@@ -418,11 +418,15 @@ function dumpxBotFrame(replay) {
 }
 
 function dumpKDBot(replay) {
-    let final = `${Math.round(replay.fps)}\r\n`;
-    replay.actions.forEach(action => {
-        final += `${action.hold ? 'push' : 'release'}${action.player2 ? '2p' : ''}: ${action.x}\r\n`;
+    const buffer = new ArrayBuffer(4 + replay.actions.length * 6);
+    const view = new DataView(buffer);
+    view.setFloat32(0, replay.fps, true);
+    replay.actions.forEach((action, i) => {
+        view.setUint32(4 + i * 6, action.x, true);
+        view.setUint8(8 + i * 6, action.hold);
+        view.setUint8(9 + i * 6, action.player2);
     });
-    return final.slice(0, final.length - 2);
+    return buffer;
 }
 
 function dumpTASBOT(replay, frame=false) {
@@ -518,7 +522,7 @@ const extensions = {
     ddhor: 'ddhor',
     'ddhor-new': 'ddhor',
     xbot: 'xbot',
-    kdbot: 'kdb',
+    kdbot: 'kd',
     zbf: 'zbf',
     'xbot-frame': 'xbot',
     'ybot-frame': null, // why
@@ -568,7 +572,7 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                     replay = parsexBot(await files[0].text());
                     break;
                 case 'kdbot':
-                    replay = parseKDBot(await files[0].text());
+                    replay = parseKDBot(view);
                     break;
                 case 'zbf':
                     replay = parseZBF(view);
@@ -633,8 +637,8 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 saveAs(new Blob([dumpxBot(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
                 return;
             case 'kdbot':
-                saveAs(new Blob([dumpKDBot(replay)], {type: 'text/plain'}), 'converted.' + extensions[to]);
-                return;
+                buffer = dumpKDBot(replay); 
+                break;
             case 'zbf':
                 buffer = dumpZBF(replay);
                 break;
