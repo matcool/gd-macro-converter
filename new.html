@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Macro Converter</title>
+    <style>
+        body {
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+            background: #444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div style="display: flex; flex-direction: column; width: 20em">
+        <div style="display: flex; justify-items: center; padding: 5em; background-color: #333" id="drag-area">
+            {{dragAreaMessage}}
+        </div>
+        <div show-if="hasMacro">
+            <div>File: <span style="font-family: monospace; background-color: rgba(0, 0, 0, 0.3); padding: 1px;">{{fileName}}</span></div>
+            <div>Macro Type: {{macroType}}</div>
+        </div>
+        <div show-if="hasMacro">
+
+        </div>
+    </div>
+
+    <script src="parser.js"></script>
+    <script src="new.js"></script>
+</body>
+</html>
