@@ -13,6 +13,50 @@ function insertChildAtIndex(element, index, child) {
 }
 
 /**
+ * @param {string} selector
+ * @returns {HTMLElement}
+ */
+ function select(selector) {
+	return document.querySelector(selector);
+}
+/**
+ * @param {string} selector
+ * @returns {NodeListOf<HTMLElement>}
+ */
+function selectAll(selector) {
+	return document.querySelectorAll(selector);
+}
+
+/**
+ * @template T
+ * @param {T[]} arr
+ * @returns {T}
+ */
+function last(arr) {
+	return arr[arr.length - 1];
+}
+
+/**
+ * @param {string} fileName
+ * @returns {string | null}
+ */
+function fileExt(fileName) {
+	const p = fileName.split('.');
+	return p.length === 1 ? null : last(p);
+}
+
+/**
+ * @template V
+ * @param {{[key: string]: V}} e
+ * @param {V} value
+ * @returns {string}
+ */
+function nameForEnum(e, value) {
+	for (const [k, v] of Object.entries(e))
+		if (v === value) return k;
+}
+
+/**
  * @typedef {(value: any) => void} ReactiveHandler
  */
 
@@ -67,7 +111,15 @@ function goThroughChildren(element) {
 		} else if (child instanceof HTMLElement) {
 			if (child.attributes['show-if']) {
 				child.hidden = true;
-				addReactiveHandler(child.attributes['show-if'].value, (value) => { child.hidden = !value; });
+				/** @type {string} */
+				let propName = child.attributes['show-if'].value;
+				let flip = false;
+				if (propName[0] === '!') {
+					flip = true;
+					propName = propName.substring(1);
+					console.log(`adding inverted handler for ${propName}`);
+				}
+				addReactiveHandler(propName, (value) => { child.hidden = !!(+!value ^ +flip); });
 			}
 			goThroughChildren(child);
 		}
@@ -77,35 +129,53 @@ goThroughChildren(document.body);
 
 reactiveValues.dragAreaMessage = 'Drag in your file';
 
-/**
- * @param {string} selector
- * @returns {HTMLElement}
- */
-function select(selector) {
-	return document.querySelector(selector);
-}
-/**
- * @param {any} selector
- */
-function selectAll(selector) {
-	return document.querySelectorAll(selector);
-}
+const Bots = {
+	list: 'Plain Text,ReplayBot,zBot,zBot Frame,yBot,xBot,TASBOT,Echo,Rush,Universal Replay,DDHOR'.split(','),
+	/**
+	 * @param {Macro} macro
+	 * @returns {number}
+	 */
+	indexFor(macro) {
+		// TODO: rewrite this
+		switch (macro.type) {
+			case MacroType.REPLAYBOT:
+				return 1;
+			case MacroType.ZBOT:
+				return macro.frame ? 3 : 2;
+			case MacroType.YBOT:
+				return 4;
+			case MacroType.XBOT:
+				return 5;
+			case MacroType.TASBOT:
+				return 6;
+			case MacroType.ECHO:
+				return 7;
+			case MacroType.RUSH:
+				return 8;
+			case MacroType.UNIVERSAL:
+				return 9;
+			case MacroType.DDHOR:
+				return 10;
+		}
+	}
+};
 
-/**
- * @template T
- * @param {T[]} arr
- * @returns {T}
- */
-function last(arr) {
-	return arr[arr.length - 1];
-}
+Object.freeze(Bots);
 
-function nameForEnum(e, value) {
-	for (const [k, v] of Object.entries(e))
-		if (v === value) return k;
-}
+selectAll('bot-select').forEach(element => {
+	const select = document.createElement('select');
+	select.id = element.id;
+	for (let name of Bots.list) {
+		const option = document.createElement('option');
+		option.textContent = name;
+		select.appendChild(option);
+	}
+	element.parentElement.replaceChild(select, element);
+});	
 
 let macro = new Macro();
+/** @type {{ name: string, stream: Stream }} */
+let currentFile;
 
 {
 	const dragArea = select('#drag-area');
@@ -134,23 +204,42 @@ let macro = new Macro();
 
 		reactiveValues.hasMacro = true;
 		reactiveValues.fileName = file.name;
-		const _split = file.name.split('.');
-		const ext = _split.length === 1 ? '' : last(_split);
+
 		macro = new Macro();
-		if (ext === 'zbf' || ext === 'zbot') {
-			macro.type = MacroType.ZBOT;
-			macro.frame = ext === 'zbf';
-		} else if (ext === 'replay') {
-			macro.type = MacroType.REPLAYBOT;
-		} else if (ext === 'echo') {
-			macro.type = MacroType.ECHO;
-		} else if (ext === 'ddhor') {
-			macro.type = MacroType.DDHOR;
+
+		const stream = new Stream(await file.arrayBuffer());
+		currentFile = {
+			name: file.name,
+			stream: stream
+		};
+
+		Converter.guessType(macro, fileExt(file.name), stream);
+		stream.seek(0);
+
+		if (macro.type === MacroType.PLAINTEXT)
+			reactiveValues.guessFailed = true;
+		else {
+			reactiveValues.guessFailed = false;
+			reactiveValues.macroType = nameForEnum(MacroType, macro.type);
+			reactiveValues.macroFrame = macro.frame;
+			reactiveValues.macroFPS = macro.fps ? macro.fps : 'Unknown';
+			// @ts-ignore		
+			select('#select-from').selectedIndex = Bots.indexFor(macro);
 		}
-		reactiveValues.macroType = nameForEnum(MacroType, macro.type);
-		const buffer = await file.arrayBuffer();
-		// TODO: let user select
-		const stream = new Stream(buffer);
-		Converter.decode(macro, stream);
 	});
 }
+
+select('#convert-button').addEventListener('click', _ => {
+	Converter.decode(macro, currentFile.stream);
+	// Oops this should not be macro.type
+	const result = Converter.encoders[macro.type](macro);
+	const ext = fileExt(currentFile.name);
+	const fileName = (ext ? currentFile.name.slice(0, currentFile.name.length - ext.length - 1) : currentFile.name) + '.txt';
+	console.log(fileName);
+	if (result instanceof Stream) {
+		// @ts-ignore
+		saveAs(new Blob([result.buffer], { type: 'application/octet-stream' }), fileName);
+	} else {
+
+	}
+});
