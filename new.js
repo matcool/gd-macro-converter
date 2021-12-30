@@ -63,7 +63,7 @@ function nameForEnum(e, value) {
 /** @type {Map.<string | symbol, ReactiveHandler[]>} */
 const reactiveHandlers = new Map();
 /** @type {Object.<string | symbol, any>} */
-const reactiveValues = new Proxy({}, {
+const ctx = new Proxy({}, {
 	get(target, prop, _) {
 		return target[prop];
 	},
@@ -127,7 +127,7 @@ function goThroughChildren(element) {
 }
 goThroughChildren(document.body);
 
-reactiveValues.dragAreaMessage = 'Drag in your file';
+ctx.dragAreaMessage = 'Drag in your file';
 
 const Bots = {
 	list: 'Plain Text,ReplayBot,zBot,zBot Frame,yBot,xBot,TASBOT,Echo,Rush,Universal Replay,DDHOR'.split(','),
@@ -194,7 +194,7 @@ let currentFile;
 
 	dragArea.addEventListener('drop', async event => {
 		dragArea.style['background-color'] = '#333';
-		reactiveValues.dragAreaMessage = 'Processing files';
+		ctx.dragAreaMessage = 'Processing files';
 		event.preventDefault();
 
 		if (event.dataTransfer.files.length === 0)
@@ -202,8 +202,8 @@ let currentFile;
 
 		const file = event.dataTransfer.files[0];
 
-		reactiveValues.hasMacro = true;
-		reactiveValues.fileName = file.name;
+		ctx.hasMacro = true;
+		ctx.fileName = file.name;
 
 		macro = new Macro();
 
@@ -217,12 +217,12 @@ let currentFile;
 		stream.seek(0);
 
 		if (macro.type === MacroType.PLAINTEXT)
-			reactiveValues.guessFailed = true;
+			ctx.guessFailed = true;
 		else {
-			reactiveValues.guessFailed = false;
-			reactiveValues.macroType = nameForEnum(MacroType, macro.type);
-			reactiveValues.macroFrame = macro.frame;
-			reactiveValues.macroFPS = macro.fps ? macro.fps : 'Unknown';
+			ctx.guessFailed = false;
+			ctx.macroType = nameForEnum(MacroType, macro.type);
+			ctx.macroFrame = macro.frame;
+			ctx.macroFPS = macro.fps ? macro.fps : 'Unknown';
 			// @ts-ignore		
 			select('#select-from').selectedIndex = Bots.indexFor(macro);
 		}
