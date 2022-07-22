@@ -291,12 +291,15 @@ function parseMHRjson(text)
 	const actions = [];
 	for (const action of data.events)
 	{
-		const x = action.frame;
-		const hold = action.down;
-		let player2;
-		if (action.p2 == true) player2 = true;
-		else player2 = false;
-		actions.push({x,hold,player2});
+		if (action.hasOwnProperty("down"))
+		{
+			const x = action.frame;
+			const hold = action.down;
+			let player2;
+			if (action.p2 == true) player2 = true;
+			else player2 = false;
+			actions.push({x,hold,player2});
+		}
 	}
 	return {fps,actions}
 }
