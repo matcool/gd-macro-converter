@@ -283,6 +283,26 @@ function parseRush(view) {
     return {fps, actions};
 }
 
+function parseMHRjson(text)
+{
+	const data = JSON.parse(text);
+	const fps = data.meta.fps;
+	
+	const actions = [];
+	for (const action of data.events)
+	{
+		if (action.hasOwnProperty("down"))
+		{
+			const x = action.frame;
+			const hold = action.down;
+			let player2;
+			if (action.p2 == true) player2 = true;
+			else player2 = false;
+			actions.push({x,hold,player2});
+		}
+	}
+	return {fps,actions}
+}
 
 
 function dumpTxt(replay) {
@@ -490,6 +510,27 @@ function dumpRush(replay) {
     return buffer;
 }
 
+function dumpMHRjson(replay)
+{
+	// Does not support any physics.
+	const data = {
+		"_": "MHR", // idfk what to put here lel
+		"events": replay.actions.map(action => {
+			let e = {
+				"a": 0, // Phys
+				"down": action.hold,
+				"frame": action.x,
+				"r": 0, //Phys
+				"x": 0,
+				"y": 0
+			}
+			if (action.player2) e.p2 = true;
+			return e;
+		}),
+		"meta": { "fps": replay.fps}
+	}
+	return JSON.stringify(data,null,1);
+}
 
 function cleanReplay(replay) {
     let last1 = false;
@@ -529,6 +570,7 @@ const extensions = {
     'url': 'replay',
     'url-f': 'replay',
     'rush': 'rsh',
+	'mhrjson': 'json'
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -598,6 +640,9 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'rush':
                     replay = parseRush(view);
                     break;
+				case 'mhrjson':
+					replay = parseMHRjson(await files[0].text());
+					break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -663,6 +708,10 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
             case 'rush':
                 buffer = dumpRush(replay);
                 break;
+			case 'mhrjson':
+				saveAs(new Blob([dumpMHRjson(replay)], {type: 'application/json'}), 'converted.mhr.json');
+				return;
+			
         }
 
         saveAs(new Blob([buffer], {type: 'application/octet-stream'}), extensions[to] ? 'converted.' + extensions[to] : 'converted');
