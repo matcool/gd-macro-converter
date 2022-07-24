@@ -507,7 +507,7 @@ function dumpRush(replay) {
 function dumpMHRjson(replay) {
     // Does not support any physics.
     const data = {
-        "_": "MHR", // idfk what to put here lel
+        "_": "Generated from macro converter",
         "events": replay.actions.map(action => {
             let e = {
                 "a": 0, // used for physics

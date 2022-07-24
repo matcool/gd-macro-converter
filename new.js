@@ -1,4 +1,3 @@
-//@ts-check
 
 /**
  * @param {HTMLElement} element
@@ -14,7 +13,7 @@ function insertChildAtIndex(element, index, child) {
 
 /**
  * @param {string} selector
- * @returns {HTMLElement}
+ * @returns {HTMLElement | null}
  */
  function select(selector) {
 	return document.querySelector(selector);
@@ -49,7 +48,7 @@ function fileExt(fileName) {
  * @template V
  * @param {{[key: string]: V}} e
  * @param {V} value
- * @returns {string}
+ * @returns {string | undefined}
  */
 function nameForEnum(e, value) {
 	for (const [k, v] of Object.entries(e))
@@ -71,6 +70,7 @@ const ctx = new Proxy({}, {
 		target[prop] = value;
 		console.log(`[info] setting reactive ${prop.toString()} with value ${value}`);
 		if (reactiveHandlers.has(prop))
+			// @ts-ignore
 			for (const cb of reactiveHandlers.get(prop))
 				cb(value);
 		return true;
@@ -84,6 +84,7 @@ const ctx = new Proxy({}, {
 function addReactiveHandler(prop, handler) {
 	if (!reactiveHandlers.has(prop))
 		reactiveHandlers.set(prop, []);
+	// @ts-ignore
 	reactiveHandlers.get(prop).push(handler);
 }
 
@@ -95,6 +96,7 @@ function goThroughChildren(element) {
 	for (let i = 0; i < element.childNodes.length; ++i) {
 		const child = element.childNodes[i];
 		if (child.nodeType === Node.TEXT_NODE) {
+			// @ts-ignore
 			const match = child.nodeValue.match(r);
 			if (match) {
 				const node = document.createTextNode(match[0]);
@@ -130,7 +132,7 @@ goThroughChildren(document.body);
 ctx.dragAreaMessage = 'Drag in your file';
 
 const Bots = {
-	list: 'Plain Text,ReplayBot,zBot,zBot Frame,yBot,xBot,TASBOT,Echo,Rush,Universal Replay,DDHOR'.split(','),
+	list: 'Plain Text,ReplayBot,zBot,zBot Frame,yBot,xBot,TASBOT,Echo,Rush,Universal Replay,DDHOR,MH Replay'.split(','),
 	/**
 	 * @param {Macro} macro
 	 * @returns {number}
@@ -156,8 +158,54 @@ const Bots = {
 				return 9;
 			case MacroType.DDHOR:
 				return 10;
+			case MacroType.MHREPLAY:
+				return 11;
+		}
+	},
+	/**
+	 * @param {Macro} macro
+	 * @param {number} index
+	 */
+	setTypeForIndex(macro, index) {
+		switch (index) {
+			case 0:
+				macro.type = MacroType.PLAINTEXT;
+				break;
+			case 1:
+				macro.type = MacroType.REPLAYBOT;
+				break;
+			case 2:
+			case 3:
+				macro.type = MacroType.ZBOT;
+				macro.frame = index === 3;
+				break;
+			case 4:
+				macro.type = MacroType.YBOT;
+				break;
+			case 5:
+				macro.type = MacroType.XBOT;
+				break;
+			case 6:
+				macro.type = MacroType.TASBOT;
+				break;
+			case 7:
+				macro.type = MacroType.ECHO;
+				break;
+			case 8:
+				macro.type = MacroType.RUSH;
+				break;
+			case 9:
+				macro.type = MacroType.UNIVERSAL;
+				break;
+			case 10:
+				macro.type = MacroType.DDHOR;
+				break;
+			case 11:
+				macro.type = MacroType.MHREPLAY;
+				break;
 		}
 	}
+
 };
 
 Object.freeze(Bots);
@@ -171,7 +219,7 @@ selectAll('bot-select').forEach(element => {
 		select.appendChild(option);
 	}
 	element.parentElement.replaceChild(select, element);
-});	
+});
 
 let macro = new Macro();
 /** @type {{ name: string, stream: Stream }} */
@@ -213,7 +261,7 @@ let currentFile;
 			stream: stream
 		};
 
-		Converter.guessType(macro, fileExt(file.name), stream);
+		Converter.guessType(macro, file.name, fileExt(file.name), stream);
 		stream.seek(0);
 
 		if (macro.type === MacroType.PLAINTEXT)
@@ -223,16 +271,21 @@ let currentFile;
 			ctx.macroType = nameForEnum(MacroType, macro.type);
 			ctx.macroFrame = macro.frame;
 			ctx.macroFPS = macro.fps ? macro.fps : 'Unknown';
-			// @ts-ignore		
+			// @ts-ignore
 			select('#select-from').selectedIndex = Bots.indexFor(macro);
 		}
 	});
 }
 
 select('#convert-button').addEventListener('click', _ => {
+	Bots.setTypeForIndex(macro, select('#select-from').selectedIndex);
 	Converter.decode(macro, currentFile.stream);
-	// Oops this should not be macro.type
-	const result = Converter.encoders[macro.type](macro);
+
+	let dummy = new Macro();
+	Bots.setTypeForIndex(dummy, select('#select-to').selectedIndex);
+
+	const result = Converter.encoders[dummy.type](macro);
+
 	const ext = fileExt(currentFile.name);
 	const fileName = (ext ? currentFile.name.slice(0, currentFile.name.length - ext.length - 1) : currentFile.name) + '.txt';
 	console.log(fileName);
@@ -240,6 +293,6 @@ select('#convert-button').addEventListener('click', _ => {
 		// @ts-ignore
 		saveAs(new Blob([result.buffer], { type: 'application/octet-stream' }), fileName);
 	} else {
-
+		saveAs(new Blob([result], { type: 'application/json' }), fileName);
 	}
 });

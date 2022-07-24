@@ -1,4 +1,3 @@
-//@ts-check
 
 const MacroType = {
 	PLAINTEXT: -1,
@@ -11,7 +10,8 @@ const MacroType = {
 	UNIVERSAL: 6,
 	RUSH: 7,
 	ECHO: 8,
-	TASBOT: 9
+	TASBOT: 9,
+	MHREPLAY: 10,
 };
 
 Object.freeze(MacroType);
@@ -241,6 +241,17 @@ const Converter = {
 				extra: action['X Position']
 			}));
 		},
+
+		[MacroType.MHREPLAY](macro, stream) {
+			const data = JSON.parse(stream.toText());
+			macro.fps = data.meta.fps;
+			macro.actions = data.events.map(action => ({
+				n: action.frame,
+				hold: action.down,
+				player2: !!action.p2,
+				extra: action.x
+			}));
+		},
 	},
 	/**
 	 * @param {Macro} macro
@@ -252,10 +263,11 @@ const Converter = {
 
 	/**
 	 * @param {Macro} macro
+	 * @param {string} fileName
 	 * @param {string} ext file extension
 	 * @param {Stream} stream
 	 */
-	guessType(macro, ext, stream) {
+	guessType(macro, fileName, ext, stream) {
 		macro.type = MacroType.PLAINTEXT;
 		macro.frame = false;
 		macro.xpos = true;
@@ -281,10 +293,14 @@ const Converter = {
 			macro.type = MacroType.DDHOR;
 			if (stream.readStr(4) === 'DDHR')
 				macro.fps = stream.readU16();
+		} else if (fileName.endsWith('.mhr.json')) {
+			macro.type = MacroType.MHREPLAY;
+			macro.frame = true;
+			macro.xpos = false;
 		} else if (ext === 'json') {
-			macro.type = MacroType.TASBOT,
-			macro.frame = true,
-			macro.xpos = true
+			macro.type = MacroType.TASBOT;
+			macro.frame = true;
+			macro.xpos = true;
 		} else if (stream.readStr(5) === 'fps: ') {
 			macro.type = MacroType.XBOT;
 			macro.fps = parseInt(stream.readUntil('\n').trim());
@@ -333,7 +349,26 @@ const Converter = {
 			});
 
 			return stream;
-		}
+		},
+
+		[MacroType.MHREPLAY](macro) {
+			return JSON.stringify({
+				"_": "Generated from macro converter",
+				events: macro.actions.map(action => ({
+					frame: action.n,
+					down: action.hold,
+					p2: action.player2,
+					// used for physics
+					a: 0,
+					r: 0,
+					x: action.extra || 0, // why not lol
+					y: 0,
+				})),
+				meta: {
+					fps: macro.fps
+				}
+			}, null, 1);
+		},
 	},
 };
 
