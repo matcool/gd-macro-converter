@@ -34,8 +34,8 @@ function parseReplayBot(view) {
             for (let i = 9 + offset; i < view.byteLength; i += 5) {
                 const x = frame ? view.getUint32(i, true) : view.getFloat32(i, true);
                 const state = view.getUint8(i + 4);
-                const hold = state & 0x1 === 1;
-                const player2 = state >> 1 === 1;
+                const hold = !!(state & 0x1);
+                const player2 = !!(state >> 1);
                 actions.push({x, hold, player2});
             }
             return {fps, actions};
