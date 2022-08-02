@@ -510,12 +510,8 @@ function dumpMHRjson(replay) {
         "_": "Generated from macro converter",
         "events": replay.actions.map(action => {
             let e = {
-                "a": 0, // used for physics
                 "down": action.hold,
-                "frame": action.x,
-                "r": 0, // used for physics
-                "x": 0,
-                "y": 0
+                "frame": action.x
             }
             if (action.player2) e.p2 = true;
             return e;
