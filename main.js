@@ -737,3 +737,11 @@ document.getElementById('btn-flip-player').addEventListener('click', () => {
     replay.actions.forEach(action => action.player2 = !action.player2);
     updateTxt();
 });
+
+document.getElementById('btn-sort-inputs').addEventListener('click', () => {
+    replay.actions.sort((a, b) => {
+        // ONLY sort by frame. Not sorting by frame could lead to following situation
+        return (a.x - b.x);
+    });
+    updateTxt();
+});
