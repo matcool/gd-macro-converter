@@ -737,3 +737,14 @@ document.getElementById('btn-flip-player').addEventListener('click', () => {
     replay.actions.forEach(action => action.player2 = !action.player2);
     updateTxt();
 });
+
+document.getElementById('btn-sort-inputs').addEventListener('click', () => {
+    replay.actions.sort((a, b) => {
+        let click_priority = (a.x - b.x);
+        let hold_priority = (b.hold - a.hold);
+        let player_priority = (b.player2 - a.player2);
+        // Frame > Click > Player
+        return click_priority != 0 ? click_priority : (hold_priority != 0 ? hold_priority : (player_priority));
+    });
+    updateTxt();
+});
