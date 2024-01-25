@@ -132,7 +132,7 @@ goThroughChildren(document.body);
 ctx.dragAreaMessage = 'Drag in your file';
 
 const Bots = {
-	list: 'Plain Text,ReplayBot,zBot,zBot Frame,yBot,xBot,TASBOT,Echo,Rush,Universal Replay,DDHOR,MH Replay'.split(','),
+	list: 'Plain Text,ReplayBot,zBot,zBot Frame,yBot,xBot,TASBOT,Echo,Rush,Universal Replay,DDHOR,MH Replay,MGO 1.2,MGO 1.2 json'.split(','),
 	/**
 	 * @param {Macro} macro
 	 * @returns {number}
@@ -160,6 +160,10 @@ const Bots = {
 				return 10;
 			case MacroType.MHREPLAY:
 				return 11;
+			case MacroType.MGO:
+				return 12;
+			case MacroType.MGOJSON:
+				return 13;
 		}
 	},
 	/**
@@ -202,6 +206,12 @@ const Bots = {
 				break;
 			case 11:
 				macro.type = MacroType.MHREPLAY;
+				break;
+			case 12:
+				macro.type = MacroType.MGO;
+				break;
+			case 13:
+				macro.type = MacroType.MGOJSON;
 				break;
 		}
 	}
