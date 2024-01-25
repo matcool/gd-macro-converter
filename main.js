@@ -298,6 +298,51 @@ function parseMHRjson(text) {
     return {fps, actions};
 }
 
+function parseMGOjson(text, frame=false) {
+    const data = JSON.parse(text);
+    const fps = data.fps;
+
+    const actions = [];
+    for (const action of data.actions) {
+        const x = frame ? action.frame : action.x;
+        actions.push({x: x, hold: action.press, player2: action.player2});
+    }
+
+    return {fps, actions};
+}
+
+function parseMGO(view, frame=false) {
+    let fps = view.getFloat32(0, true);
+    const actions = [];
+    
+    /**
+    * Action layout
+    * size: 24 bytes
+    * uint8 at 0 (hold)
+    * uint8 at 1 (player2)
+    * uint32 at 4 (frame)
+    * float64 at 8 (yAccel)
+    * float32 at 16 (x pos)
+    * float32 at 20 (y pos)
+    */
+   
+    let action_size = 24;
+    let actions_size = action_size * view.getUint32(4, true);
+
+    for (let i = 0; i < actions_size; i += action_size) {
+        const action_pos = i + 12; // Offset from beginning
+        const hold = view.getUint8(action_pos) === 1;
+        const player2 = view.getUint8(action_pos + 1) === 1;
+        const frame_time = view.getUint32(action_pos + 4, true);
+        const x_pos = view.getFloat32(action_pos + 16, true);
+        const x = frame ? frame_time : x_pos;
+
+        actions.push({x, hold, player2})
+    }
+
+    return {fps, actions};
+}
+
 
 function dumpTxt(replay) {
     let final = '';
@@ -525,6 +570,68 @@ function dumpMHRjson(replay) {
     return JSON.stringify(data, null, 1);
 }
 
+function dumpMGOjson(replay, frame=false) {
+    // Does not support pure frame replays
+    const data = {
+        fps: replay.fps,
+        macro: replay.actions.map(action => {
+            let e = {
+                frame: frame ? action.x : 0,
+                player2: action.player2,
+                press: action.hold,
+                x: frame ? 0 : action.x,
+                y: 0,
+                yAccel: 0
+            }
+            return e;
+        })
+    };
+    return JSON.stringify(data, null, 4);
+}
+
+function dumpMGO(replay, frame=false) {
+    /**
+    * File layout
+    * float32 at 0 (fps)
+    * uint32 at 4 (actions count)
+    * uint32 at 8 (frame actions count)
+    */
+    
+    /**
+    * Action layout
+    * size: 24 bytes
+    * uint8 at 0 (hold)
+    * uint8 at 1 (player2)
+    * uint32 at 4 (frame)
+    * float64 at 8 (yAccel)
+    * float32 at 16 (x pos)
+    * float32 at 20 (y pos)
+    */
+    let action_size = 24;
+    const buffer = new ArrayBuffer(12 + (replay.actions.length * action_size))
+    console.log(replay.fps);
+    const view = new DataView(buffer);
+
+    view.setFloat32(0, replay.fps, true);
+    view.setUint32(4, replay.actions.length, true);
+    view.setUint32(8, 0);
+
+    let i = 0;
+    replay.actions.forEach((action) => {
+        const action_offset = (i * action_size) + 12;
+
+        view.setUint8(action_offset, action.hold ? 1 : 0, true);
+        view.setUint8(action_offset + 1, action.player2 ? 1 : 0, true);
+        view.setUint32(action_offset + 2, frame ? action.x : 0, true);
+        view.setFloat64(action_offset + 8, 0, true);
+        view.setFloat32(action_offset + 16, frame ? 0 : action.x, true);
+        view.setFloat32(action_offset + 20, 0, true);
+        i++;
+    })
+
+    return buffer;
+}
+
 function cleanReplay(replay) {
     let last1 = false;
     let last2 = false;
@@ -563,7 +670,9 @@ const extensions = {
     'url': 'replay',
     'url-f': 'replay',
     'rush': 'rsh',
-	'mhrjson': 'json'
+	'mhrjson': 'json',
+    'mgo': 'macro',
+    'mgo-f': 'macro'
 }
 
 document.getElementById('select-from').addEventListener('change', e => {
@@ -636,6 +745,18 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 case 'mhrjson':
                     replay = parseMHRjson(await files[0].text());
                     break;
+                case 'mgo':
+                    replay = parseMGO(view);
+                    break;
+                case 'mgo-f':
+                    replay = parseMGO(view, true);
+                    break;
+                case 'mgo-json':
+                    replay = parseMGOjson(await files[0].text());
+                    break;
+                case 'mgo-json-f':
+                    replay = parseMGOjson(await files[0].text(), true);
+                    break;
             }
             if (to === 'txt') {
                 // if converting to plain text then switch
@@ -703,6 +824,18 @@ document.getElementById('btn-convert').addEventListener('click', async () => {
                 break;
             case 'mhrjson':
                 saveAs(new Blob([dumpMHRjson(replay)], {type: 'application/json'}), 'converted.mhr.json');
+                return;
+            case 'mgo':
+                buffer = dumpMGO(replay);
+                break;
+            case 'mgo-f':
+                buffer = dumpMGO(replay, true);
+                break;
+            case 'mgo-json':
+                saveAs(new Blob([dumpMGOjson(replay)], {type: 'application/json'}), 'converted.mcb.json');
+                return;
+            case 'mgo-json-f':
+                saveAs(new Blob([dumpMGOjson(replay, true)], {type: 'application/json'}), 'converted.mcb.json');
                 return;
         }
 

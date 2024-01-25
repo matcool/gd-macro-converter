@@ -12,6 +12,8 @@ const MacroType = {
 	ECHO: 8,
 	TASBOT: 9,
 	MHREPLAY: 10,
+	MGO: 11,
+	MGOJSON: 12,
 };
 
 Object.freeze(MacroType);
@@ -252,6 +254,51 @@ const Converter = {
 				extra: action.x
 			}));
 		},
+
+		[MacroType.MGO](macro, stream) {
+			let fps = stream.readF32();
+			const actions = [];
+			
+			/**
+			* Action layout
+			* size: 24 bytes
+			* uint8 at 0 (hold)
+			* uint8 at 1 (player2)
+			* uint32 at 4 (frame)
+			* float64 at 8 (yAccel)
+			* float32 at 16 (x pos)
+			* float32 at 20 (y pos)
+			*/
+		   
+			let action_size = 24;
+			let actions_size = action_size * stream.readU32();
+		
+			for (let i = 0; i < actions_size; i += action_size) {
+				const hold = stream.readU8() === 1;
+				const player2 = stream.readU8() === 1;
+				const frame_time = stream.readU32();
+				stream.pos += 8;
+				const x = stream.readF32();
+				stream.pos += 4;
+		
+				actions.push({x, hold, player2})
+			}
+		
+			macro.fps = fps;
+			macro.actions = actions;
+		},
+
+		[MacroType.MGOJSON](macro, stream) {
+			const data = JSON.parse(stream.toText());
+			const fps = data.fps;
+		
+			const actions = [];
+			for (const action of data.actions)
+				actions.push({x: action.x, hold: action.press, player2: action.player2});
+		
+			macro.fps = fps;
+			macro.actions = actions;
+		},
 	},
 	/**
 	 * @param {Macro} macro
@@ -285,6 +332,14 @@ const Converter = {
 			}
 			macro.fps = stream.readF32();
 			macro.xpos = !macro.frame;
+		} else if (ext === 'macro') {
+			macro.type = MacroType.MGO;
+			macro.frame = false;
+			macro.xpos = true;
+		} else if (fileName.endsWith('.mcb.json')) {
+			macro.type = MacroType.MGOJSON;
+			macro.frame = false;
+			macro.xpos = true;
 		} else if (ext === 'echo') {
 			macro.type = MacroType.ECHO;
 			macro.frame = true;
@@ -369,6 +424,64 @@ const Converter = {
 				}
 			}, null, 1);
 		},
+
+		[MacroType.MGO](macro) {
+			/**
+			* File layout
+			* float32 at 0 (fps)
+			* uint32 at 4 (actions count)
+			* uint32 at 8 (frame actions count)
+			*/
+	
+			/**
+			* Action layout
+			* size: 24 bytes
+			* uint8 at 0 (hold)
+			* uint8 at 1 (player2)
+			* uint32 at 4 (frame)
+			* float64 at 8 (yAccel)
+			* float32 at 16 (x pos)
+			* float32 at 20 (y pos)
+			*/
+			let action_size = 24;
+			const stream = new Stream(12 + (replay.actions.length * action_size))
+
+			stream.writeF32(replay.fps);
+			stream.writeU32(replay.actions.length);
+			stream.writeU32(0);
+
+			let i = 0;
+			replay.actions.forEach((action) => {
+				stream.writeU8(action.hold ? 1 : 0);
+				stream.writeU8(action.player2 ? 1 : 0);
+				stream.writeU32(0);
+				stream.writeF64(0);
+				stream.writeF32(action.x);
+				stream.writeF32(0);
+				i++;
+			})
+
+			return buffer;
+		},
+
+		[MacroType.MGOJSON](macro) {
+			// Does not support pure frame replays
+			const data = {
+				fps: replay.fps,
+				macro: macro.actions.map(action => {
+					let e = {
+						frame: frame ? action.x : 0,
+						player2: action.player2,
+						press: action.hold,
+						x: frame ? 0 : action.x,
+						y: 0,
+						yAccel: 0
+					}
+					return e;
+				})
+			};
+			return JSON.stringify(data, null, 4);
+		}
 	},
 };
 
